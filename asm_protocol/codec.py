@@ -88,6 +88,21 @@ class binaryPacket:
     def matches(cls, packetClass: int, packetID: int) -> bool:
         return packetClass == cls.PACKET_CLASS and packetID == cls.PACKET_ID
 
+class E4E_Heartbeat(binaryPacket):
+    PACKET_CLASS = 0x01
+    PACKET_ID = 0x01
+    __VERSION = 0x01
+    def __init__(self, src:uuid.UUID, dest:uuid.UUID) -> None:
+        super().__init__(b'', self.PACKET_CLASS, self.PACKET_ID, src, dest)
+
+    @classmethod
+    def from_bytes(cls, packet: bytes) -> 'E4E_Heartbeat':
+        srcUUID, destUUID, _, _, payload = cls.parseHeader(packet)
+        if len(payload) != 0:
+            raise RuntimeError("Payload not expected")
+        src = uuid.UUID(bytes=srcUUID)
+        dest = uuid.UUID(bytes=destUUID)
+        return cls(src, dest)
 
 class E4E_Data_IMU(binaryPacket):
     PACKET_CLASS = 0x04
