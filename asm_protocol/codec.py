@@ -12,7 +12,7 @@ import enum
 import queue
 import struct
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type, Set
 
 import numpy as np
 
@@ -96,6 +96,9 @@ class E4E_Heartbeat(binaryPacket):
 
     def __init__(self, src: uuid.UUID, dest: uuid.UUID) -> None:
         super().__init__(b'', self.PACKET_CLASS, self.PACKET_ID, src, dest)
+
+    def __str__(self) -> str:
+        return f'E4E_Heartbeat(src={self._source}, dest={self._dest})'
 
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_Heartbeat':
@@ -364,6 +367,12 @@ class E4E_Data_Raw_File(binaryPacket):
         return E4E_Data_Raw_File(fileID, seq, blob, src, dest)
 
 
+def _all_subclasses(cls: Type[object]) -> Set[Type[object]]:
+    return set(cls.__subclasses__()).union(
+        [s for c in cls.__subclasses__() for s in _all_subclasses(c)]
+    )
+
+
 class binaryPacketParser:
     class State(enum.Enum):
         FIND_SYNC1 = 0
@@ -376,16 +385,6 @@ class binaryPacketParser:
         VALIDATE = 7
         RECYCLE = 8
 
-    packetMap: Dict[int, Type[binaryPacket]] = {
-        0x0400: E4E_Data_IMU,
-        0x0401: E4E_Data_Audio_raw8,
-        0x0402: E4E_Data_Audio_raw16,
-        0x04FC: E4E_Data_Raw_File_Header,
-        0x04FD: E4E_Data_Raw_File_CTS,
-        0x04FE: E4E_Data_Raw_File_ACK,
-        0x04FF: E4E_Data_Raw_File
-    }
-
     HEADER_LEN = 0x0026
 
     def __init__(self) -> None:
@@ -393,6 +392,12 @@ class binaryPacketParser:
         self.__payloadLen = 0
         self.__buffer = bytearray()
         self.__data = queue.Queue()
+
+        packet_classes = _all_subclasses(binaryPacket)
+        self.packetMap:  Dict[int, Type[binaryPacket]] = \
+            {cls.PACKET_CLASS << 8 | cls.PACKET_ID: cls
+             for cls in packet_classes
+             if issubclass(cls, binaryPacket)}
 
     def parseByte(self, data: int) -> Optional[binaryPacket]:
         self.__data.put(data)
@@ -438,7 +443,10 @@ class binaryPacketParser:
                 for byte in self.__recycleBuffer:
                     self.__data.put(byte)
             else:
-                self.__state = self.State.PAYLOAD
+                if self.__payloadLen > 0:
+                    self.__state = self.State.PAYLOAD
+                else:
+                    self.__state = self.State.CKSUM
             return None
         elif self.__state is self.State.PAYLOAD:
             self.__buffer.append(data)
