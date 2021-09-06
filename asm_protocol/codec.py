@@ -397,6 +397,9 @@ class E4E_START_RTP_CMD(binaryPacket):
         dest = uuid.UUID(bytes=destUUID)
         return E4E_START_RTP_CMD(src, dest)
 
+    def __str__(self) -> str:
+        return f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest})'
+
 
 class E4E_START_RTP_RSP(binaryPacket):
     PACKET_CLASS = 0x03
@@ -420,6 +423,10 @@ class E4E_START_RTP_RSP(binaryPacket):
         src = uuid.UUID(bytes=srcUUID)
         dest = uuid.UUID(bytes=destUUID)
         return E4E_START_RTP_RSP(src, dest, port)
+
+    def __str__(self) -> str:
+        return (f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest}, '
+                f'port={self.port})')
 
 
 def _all_subclasses(cls: Type[object]) -> Set[Type[object]]:
