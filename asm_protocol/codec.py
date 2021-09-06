@@ -94,7 +94,8 @@ class E4E_Heartbeat(binaryPacket):
     PACKET_ID = 0x01
     __VERSION = 0x01
 
-    def __init__(self, src: uuid.UUID, dest: uuid.UUID, timestamp: Optional[dt.datetime] = None) -> None:
+    def __init__(self, src: uuid.UUID, dest: uuid.UUID,
+                 timestamp: Optional[dt.datetime] = None) -> None:
         if not timestamp:
             timestamp = dt.datetime.now()
         self.timestamp = timestamp
@@ -102,7 +103,8 @@ class E4E_Heartbeat(binaryPacket):
         super().__init__(payload, self.PACKET_CLASS, self.PACKET_ID, src, dest)
 
     def __str__(self) -> str:
-        return f'E4E_Heartbeat(src={self._source}, dest={self._dest}, timestamp={self.timestamp})'
+        return (f'E4E_Heartbeat(src={self._source}, dest={self._dest}, '
+                f'timestamp={self.timestamp})')
 
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_Heartbeat':
@@ -113,8 +115,10 @@ class E4E_Heartbeat(binaryPacket):
         timestamp = dt.datetime.fromtimestamp(timestamp_ms / 1e3)
         return cls(src, dest, timestamp)
 
+
 class DataPackets(binaryPacket):
     pass
+
 
 class E4E_Data_IMU(DataPackets):
     PACKET_CLASS = 0x04
@@ -373,6 +377,51 @@ class E4E_Data_Raw_File(binaryPacket):
         return E4E_Data_Raw_File(fileID, seq, blob, src, dest)
 
 
+class E4E_START_RTP_CMD(binaryPacket):
+    PACKET_CLASS = 0x03
+    PACKET_ID = 0x02
+    __VERSION = 0x01
+
+    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID) -> None:
+        payload = struct.pack('<H', self.__VERSION)
+        packetClass = self.PACKET_CLASS
+        packetID = self.PACKET_ID
+        super().__init__(payload, packetClass, packetID, sourceUUID, destUUID)
+
+    @classmethod
+    def from_bytes(cls, packet: bytes) -> 'E4E_START_RTP_CMD':
+        srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
+        version, = struct.unpack('<H', payload)
+        assert(version <= cls.__VERSION)
+        src = uuid.UUID(bytes=srcUUID)
+        dest = uuid.UUID(bytes=destUUID)
+        return E4E_START_RTP_CMD(src, dest)
+
+
+class E4E_START_RTP_RSP(binaryPacket):
+    PACKET_CLASS = 0x03
+    PACKET_ID = 0x03
+    __VERSION = 0x01
+
+    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID, port: int) \
+            -> None:
+        self.port = port
+        payload = struct.pack('<HH', self.__VERSION, port)
+        packetClass = self.PACKET_CLASS
+        packetID = self.PACKET_ID
+        super().__init__(payload, packetClass, packetID, sourceUUID, destUUID)
+
+    @classmethod
+    def from_bytes(cls, packet: bytes) -> 'E4E_START_RTP_RSP':
+        srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
+        version, = struct.unpack_from('<H', payload)
+        assert(version <= cls.__VERSION)
+        port, = struct.unpack_from('<H', packet, offset=2)
+        src = uuid.UUID(bytes=srcUUID)
+        dest = uuid.UUID(bytes=destUUID)
+        return E4E_START_RTP_RSP(src, dest, port)
+
+
 def _all_subclasses(cls: Type[object]) -> Set[Type[object]]:
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in _all_subclasses(c)]
@@ -397,7 +446,7 @@ class binaryPacketParser:
         self.__state = self.State.FIND_SYNC1
         self.__payloadLen = 0
         self.__buffer = bytearray()
-        self.__data = queue.Queue()
+        self.__data: queue.Queue[int] = queue.Queue()
 
         packet_classes = _all_subclasses(binaryPacket)
         self.packetMap:  Dict[int, Type[binaryPacket]] = \
