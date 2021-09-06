@@ -417,9 +417,8 @@ class E4E_START_RTP_RSP(binaryPacket):
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_START_RTP_RSP':
         srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
-        version, = struct.unpack_from('<H', payload)
+        version, port, = struct.unpack_from('<HH', payload)
         assert(version <= cls.__VERSION)
-        port, = struct.unpack_from('<H', packet, offset=2)
         src = uuid.UUID(bytes=srcUUID)
         dest = uuid.UUID(bytes=destUUID)
         return E4E_START_RTP_RSP(src, dest, port)
