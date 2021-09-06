@@ -94,23 +94,29 @@ class E4E_Heartbeat(binaryPacket):
     PACKET_ID = 0x01
     __VERSION = 0x01
 
-    def __init__(self, src: uuid.UUID, dest: uuid.UUID) -> None:
-        super().__init__(b'', self.PACKET_CLASS, self.PACKET_ID, src, dest)
+    def __init__(self, src: uuid.UUID, dest: uuid.UUID, timestamp: Optional[dt.datetime] = None) -> None:
+        if not timestamp:
+            timestamp = dt.datetime.now()
+        self.timestamp = timestamp
+        payload = struct.pack('<Q', int(timestamp.timestamp() * 1e3))
+        super().__init__(payload, self.PACKET_CLASS, self.PACKET_ID, src, dest)
 
     def __str__(self) -> str:
-        return f'E4E_Heartbeat(src={self._source}, dest={self._dest})'
+        return f'E4E_Heartbeat(src={self._source}, dest={self._dest}, timestamp={self.timestamp})'
 
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_Heartbeat':
         srcUUID, destUUID, _, _, payload = cls.parseHeader(packet)
-        if len(payload) != 0:
-            raise RuntimeError("Payload not expected")
+        timestamp_ms, = struct.unpack('<Q', payload)
         src = uuid.UUID(bytes=srcUUID)
         dest = uuid.UUID(bytes=destUUID)
-        return cls(src, dest)
+        timestamp = dt.datetime.fromtimestamp(timestamp_ms / 1e3)
+        return cls(src, dest, timestamp)
 
+class DataPackets(binaryPacket):
+    pass
 
-class E4E_Data_IMU(binaryPacket):
+class E4E_Data_IMU(DataPackets):
     PACKET_CLASS = 0x04
     PACKET_ID = 0x00
     __VERSION = 0x01
@@ -159,7 +165,7 @@ class E4E_Data_IMU(binaryPacket):
                             timestamp=timestamp)
 
 
-class E4E_Data_Audio_raw8(binaryPacket):
+class E4E_Data_Audio_raw8(DataPackets):
     PACKET_CLASS = 0x04
     PACKET_ID = 0x01
     __VERSION = 0x01
@@ -204,7 +210,7 @@ class E4E_Data_Audio_raw8(binaryPacket):
         return E4E_Data_Audio_raw8(audioData, src, dest, timestamp)
 
 
-class E4E_Data_Audio_raw16(binaryPacket):
+class E4E_Data_Audio_raw16(DataPackets):
     PACKET_CLASS = 0x04
     PACKET_ID = 0x02
     __VERSION = 0x01
