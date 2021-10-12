@@ -382,20 +382,22 @@ class E4E_START_RTP_CMD(binaryPacket):
     PACKET_ID = 0x02
     __VERSION = 0x01
 
-    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID) -> None:
-        payload = struct.pack('<H', self.__VERSION)
+    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID, streamID: int) -> None:
+        payload = struct.pack('<HH', self.__VERSION, streamID)
         packetClass = self.PACKET_CLASS
         packetID = self.PACKET_ID
+        self.streamID = streamID
         super().__init__(payload, packetClass, packetID, sourceUUID, destUUID)
 
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_START_RTP_CMD':
         srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
-        version, = struct.unpack('<H', payload)
+        version, streamID = struct.unpack('<HH', payload)
         assert(version <= cls.__VERSION)
         src = uuid.UUID(bytes=srcUUID)
         dest = uuid.UUID(bytes=destUUID)
-        return E4E_START_RTP_CMD(src, dest)
+        
+        return E4E_START_RTP_CMD(src, dest, streamID)
 
     def __str__(self) -> str:
         return f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest})'
@@ -406,10 +408,11 @@ class E4E_START_RTP_RSP(binaryPacket):
     PACKET_ID = 0x03
     __VERSION = 0x01
 
-    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID, port: int) \
+    def __init__(self, sourceUUID: uuid.UUID, destUUID: uuid.UUID, port: int, streamID: int) \
             -> None:
         self.port = port
-        payload = struct.pack('<HH', self.__VERSION, port)
+        self.streamID = streamID
+        payload = struct.pack('<HHH', self.__VERSION, port, streamID)
         packetClass = self.PACKET_CLASS
         packetID = self.PACKET_ID
         super().__init__(payload, packetClass, packetID, sourceUUID, destUUID)
@@ -417,11 +420,11 @@ class E4E_START_RTP_RSP(binaryPacket):
     @classmethod
     def from_bytes(cls, packet: bytes) -> 'E4E_START_RTP_RSP':
         srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
-        version, port, = struct.unpack_from('<HH', payload)
+        version, port, streamID = struct.unpack_from('<HHH', payload)
         assert(version <= cls.__VERSION)
         src = uuid.UUID(bytes=srcUUID)
         dest = uuid.UUID(bytes=destUUID)
-        return E4E_START_RTP_RSP(src, dest, port)
+        return E4E_START_RTP_RSP(src, dest, port, streamID)
 
     def __str__(self) -> str:
         return (f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest}, '
