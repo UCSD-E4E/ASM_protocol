@@ -6,13 +6,15 @@
 # binaryPacketParser classes are directly copied from
 # https://github.com/UCSD-E4E/e4e-tools/blob/binaryProtocol/binary_protocol/Binary%20Protocol%20Decoder.ipynb
 
+from __future__ import annotations
+
 import binascii
 import datetime as dt
 import enum
 import queue
 import struct
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Type, Set
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 import numpy as np
 
@@ -400,7 +402,7 @@ class E4E_START_RTP_CMD(binaryPacket):
         return E4E_START_RTP_CMD(src, dest, streamID)
 
     def __str__(self) -> str:
-        return f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest})'
+        return f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest}, streamID={self.streamID})'
 
 
 class E4E_START_RTP_RSP(binaryPacket):
@@ -427,8 +429,8 @@ class E4E_START_RTP_RSP(binaryPacket):
         return E4E_START_RTP_RSP(src, dest, port, streamID)
 
     def __str__(self) -> str:
-        return (f'E4E_START_RTP_CMD(src={self._source}, dest={self._dest}, '
-                f'port={self.port})')
+        return (f'E4E_START_RTP_RSP(src={self._source}, dest={self._dest}, '
+                f'port={self.port}, streamid={self.streamID})')
 
 
 def _all_subclasses(cls: Type[object]) -> Set[Type[object]]:
