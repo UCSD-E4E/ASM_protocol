@@ -13,6 +13,7 @@ import datetime as dt
 import enum
 import queue
 import struct
+from unittest import defaultTestLoader
 import uuid
 from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
@@ -261,6 +262,33 @@ class E4E_Data_Audio_raw16(DataPackets):
         dest = uuid.UUID(bytes=destUUID)
         return E4E_Data_Audio_raw16(audioData, src, dest, timestamp)
 
+class E4E_Flipper_Data(DataPackets):
+    PACKET_CLASS = 0x04
+    PACKET_ID = 0x03
+    __VERSION = 0x01
+
+    IN = 0
+    OUT = 1
+
+    def __init__(self, direction:int, sourceUUID: uuid.UUID, destUUID: uuid.UUID, timestamp: dt.datetime = None) -> None:
+        assert(direction in [self.IN, self.OUT])
+        if timestamp is None:
+            timestamp = dt.datetime.now()
+
+        payload = struct.pack("<BBQ",
+            self.__VERSION,
+            direction,
+            int(timestamp.timestamp() * 1e3))
+        super().__init__(payload, self.PACKET_CLASS, self.PACKET_ID, sourceUUID, destUUID)
+
+    @classmethod
+    def from_bytes(cls, packet: bytes) -> 'E4E_Flipper_Data':
+        srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
+        version, direction, timestamp_ms = struct.unpack("<BBQ", payload)
+        timestamp = dt.datetime.fromtimestamp(timestamp_ms / 1e3)
+        src = uuid.UUID(bytes=srcUUID)
+        dest = uuid.UUID(bytes=destUUID)
+        return E4E_Flipper_Data(direction, src, dest, timestamp)
 
 class E4E_Data_Raw_File_Header(binaryPacket):
     PACKET_CLASS = 0x04
