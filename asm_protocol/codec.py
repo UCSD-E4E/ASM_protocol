@@ -274,6 +274,8 @@ class E4E_Flipper_Data(DataPackets):
         assert(direction in [self.IN, self.OUT])
         if timestamp is None:
             timestamp = dt.datetime.now()
+        self.direction = direction
+        self.timestamp = timestamp
 
         payload = struct.pack("<BBQ",
             self.__VERSION,
