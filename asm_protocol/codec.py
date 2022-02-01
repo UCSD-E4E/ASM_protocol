@@ -292,6 +292,32 @@ class E4E_Flipper_Data(DataPackets):
         dest = uuid.UUID(bytes=destUUID)
         return E4E_Flipper_Data(direction, src, dest, timestamp)
 
+class E4E_Data_Labels(DataPackets):
+    PACKET_CLASS = 0x04
+    PACKET_ID = 0x04
+    __VERSION = 0x01
+
+    def __init__(self, label:int, sourceUUID: uuid.UUID, destUUID: uuid.UUID, timestamp: dt.datetime = None) -> None:
+        if timestamp is None:
+            timestamp = dt.datetime.now()
+        self.label = label
+        self.timestamp = timestamp
+
+        payload = struct.pack("<BQQ",
+            self.__VERSION,
+            label,
+            int(timestamp.timestamp() * 1e3))
+        super().__init__(payload, self.PACKET_CLASS, self.PACKET_ID, sourceUUID, destUUID)
+
+    @classmethod
+    def from_bytes(cls, packet: bytes) -> 'E4E_Data_Labels':
+        srcUUID, destUUID, pcls, pid, payload = cls.parseHeader(packet)
+        version, label, timestamp_ms = struct.unpack("<BQQ", payload)
+        timestamp = dt.datetime.fromtimestamp(timestamp_ms / 1e3)
+        src = uuid.UUID(bytes=srcUUID)
+        dest = uuid.UUID(bytes=destUUID)
+        return E4E_Data_Labels(label, src, dest, timestamp)
+
 class E4E_Data_Raw_File_Header(binaryPacket):
     PACKET_CLASS = 0x04
     PACKET_ID = 0xFC
